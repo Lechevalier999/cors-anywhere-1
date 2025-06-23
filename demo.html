@@ -93,7 +93,7 @@ textarea {
         method: this.id === 'post' ? 'POST' : 'GET',
         url: urlField.value,
         data: dataField.value
-      }, function printResult(result) {
+      }, function iFrame(result) {
         outputField.value = result;
       });
     };
