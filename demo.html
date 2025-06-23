@@ -2,166 +2,107 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Proxy for school</title>
+  <title>Simple Web Proxy Embed</title>
   <meta name="viewport" content="width=device-width">
   <style>
     html, body {
       margin: 0;
-      height: 100%;
-      padding: 3px;
+      padding: 0;
       font-family: Arial, sans-serif;
-      font-size: 16px;
       background: #f8f8f8;
+      min-height: 100vh;
     }
-    * {
-      box-sizing: border-box;
-    }
-    label { display: block; margin: 10px 0 5px; }
-    input, button, textarea {
-      font-size: 16px;
-    }
-    input[type="url"], input[type="text"] {
-      width: 100%;
-      padding: 8px 5px;
-      border: 1px solid #CCC;
-      border-radius: 3px;
-      margin-bottom: 10px;
-    }
-    button {
-      width: 48%;
-      padding: 10px 0;
-      border: none;
-      background: #1976d2;
-      color: #fff;
-      border-radius: 3px;
-      margin-right: 2%;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:last-child { margin-right: 0; }
-    button:hover { background: #1565c0; }
-    textarea {
-      width: 100%;
-      height: 250px;
-      margin-top: 10px;
-      border: 1px solid #CCC;
-      border-radius: 3px;
-      padding: 8px;
-      resize: vertical;
-      font-family: monospace;
-    }
-    #top {
+    #container {
+      max-width: 550px;
+      margin: 32px auto 0 auto;
       background: #fff;
-      padding: 16px;
-      border-radius: 5px;
-      box-shadow: 0 2px 8px #ccc;
-      margin-bottom: 15px;
+      padding: 24px 20px 32px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px #bbb;
+    }
+    label {
+      display: block;
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+    input[type="url"] {
+      width: 100%;
+      padding: 10px 7px;
+      font-size: 17px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
     }
     #status {
-      margin: 8px 0 0 0;
+      min-height: 18px;
       color: #d32f2f;
-      min-height: 20px;
+      margin-top: 7px;
       font-size: 14px;
     }
-    .links {
-      margin-bottom: 10px;
-      font-size: 15px;
+    #embedArea {
+      margin-top: 26px;
+      min-height: 380px;
     }
-    .links a { color: #1976d2; text-decoration: none; }
-    .links a:hover { text-decoration: underline; }
+    iframe {
+      width: 100%;
+      min-height: 480px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+    }
   </style>
 </head>
 <body>
-  <div id="top">
-    <div class="links">
-      CORS Anywhere demo &bull;
-      <a href="https://github.com/Rob--W/cors-anywhere/">GitHub</a> &bull;
-      <a href="https://cors-anywhere.herokuapp.com">Live server</a>
-    </div>
-    <form id="corsForm" autocomplete="off">
-      <label for="url">
-        URL to be fetched (e.g., <a href="//robwu.nl/dump.php" target="_blank">robwu.nl/dump.php</a>):
-      </label>
-      <input type="url" id="url" placeholder="https://example.com/api" required autofocus>
-      <label for="data">
-        If using POST, enter the data:
-      </label>
-      <input type="text" id="data" placeholder="key1=value1&key2=value2">
-      <div>
-        <button type="button" id="get">GET</button>
-        <button type="button" id="post">POST</button>
-      </div>
+  <div id="container">
+    <label for="siteurl">Type website URL:</label>
+    <form id="proxyForm" autocomplete="off">
+      <input type="url" id="siteurl" placeholder="https://example.com" required autofocus>
       <div id="status"></div>
     </form>
-  </div>
-  <div id="bottom">
-    <label for="output">Response output:</label>
-    <textarea id="output" readonly placeholder="Response will appear here"></textarea>
+    <div id="embedArea"></div>
   </div>
   <script>
+    // Change this if you have your own proxy backend!
     const cors_api_url = 'https://cors-anywhere.herokuapp.com/';
-    const urlField = document.getElementById('url');
-    const dataField = document.getElementById('data');
-    const output = document.getElementById('output');
-    const statusDiv = document.getElementById('status');
-    const form = document.getElementById('corsForm');
 
-    function setStatus(msg, isError = false) {
+    const form = document.getElementById('proxyForm');
+    const urlInput = document.getElementById('siteurl');
+    const statusDiv = document.getElementById('status');
+    const embedArea = document.getElementById('embedArea');
+
+    function setStatus(msg, isError = true) {
       statusDiv.textContent = msg;
       statusDiv.style.color = isError ? '#d32f2f' : '#388e3c';
     }
 
-    function doCORSRequest(options) {
-      setStatus('Fetching...', false);
-      output.value = '';
-      const x = new XMLHttpRequest();
-      x.open(options.method, cors_api_url + options.url);
-      x.onload = function() {
-        setStatus(options.method + ' ' + options.url + ': ' + x.status + ' ' + x.statusText, x.status >= 400);
-        output.value = x.responseText;
-      };
-      x.onerror = function() {
-        setStatus('Request failed. Check the URL and your network connection.', true);
-        output.value = '';
-      };
-      if (/^POST/i.test(options.method)) {
-        x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-      }
-      x.send(options.data);
-    }
-
     form.addEventListener('submit', function(e) {
       e.preventDefault();
+      const rawUrl = urlInput.value.trim();
+      embedArea.innerHTML = '';
+      setStatus('');
+      if (!rawUrl) {
+        setStatus('Please enter a website URL.');
+        return;
+      }
+      let url;
+      try {
+        url = new URL(rawUrl);
+      } catch {
+        setStatus('Invalid URL. Please enter a valid website URL.');
+        return;
+      }
+      // Build the proxy URL
+      const proxiedUrl = cors_api_url + url.href;
+      // Create and show the iframe
+      const iframe = document.createElement('iframe');
+      iframe.src = proxiedUrl;
+      iframe.onload = function() {
+        setStatus('Loaded!', false);
+      };
+      iframe.onerror = function() {
+        setStatus('Unable to load the site. The site may block embedding, or the proxy is unavailable.');
+      };
+      embedArea.appendChild(iframe);
     });
-
-    document.getElementById('get').onclick = function() {
-      if (!urlField.value) {
-        setStatus('Please enter a URL.', true);
-        return;
-      }
-      doCORSRequest({
-        method: 'GET',
-        url: urlField.value,
-        data: null
-      });
-    };
-
-    document.getElementById('post').onclick = function() {
-      if (!urlField.value) {
-        setStatus('Please enter a URL.', true);
-        return;
-      }
-      doCORSRequest({
-        method: 'POST',
-        url: urlField.value,
-        data: dataField.value
-      });
-    };
-
-    if (typeof console === 'object') {
-      console.log('// To test a local CORS Anywhere server, set cors_api_url. For example:');
-      console.log('cors_api_url = "http://localhost:8080/"');
-    }
   </script>
 </body>
 </html>
